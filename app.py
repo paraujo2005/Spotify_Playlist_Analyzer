@@ -94,16 +94,22 @@ def profile():
         return f"Erro ao obter playlists: {res.text}", res.status_code
     
     playlist_data = res.json()
-    playlist_items = playlist_data.get("items", [])
         
     playlists = []
-    for p in playlist_items:
-        playlists.append({
-            "id": p["id"],
-            "name": p["name"],
-            "image": p["images"][0]["url"] if p.get("images") and len(p["images"]) > 0 else "https://via.placeholder.com/150"
-        })
+    while True:
+        playlist_items = playlist_data.get("items", [])
+        for p in playlist_items:
+            playlists.append({
+                "id": p["id"],
+                "name": p["name"],
+                "image": p["images"][0]["url"] if p.get("images") and len(p["images"]) > 0 else "https://via.placeholder.com/150"
+            })
 
+        if not playlist_data.get("next"):
+            break
+
+        res = requests.get(playlist_data["next"], headers=headers)
+        playlist_data = res.json()
 
     return render_template("profile_tailwind.html",
                            display_name=profile_data.get("display_name"),
@@ -113,7 +119,36 @@ def profile():
 
 @app.route('/playlist/<id>')
 def playlist(id):
-    return f"Testando e Funcionando para a playlist {id}"
+    access_token = session.get("access_token")
+    
+    if not access_token:
+        return redirect("/login")
+
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    res = requests.get(f"https://api.spotify.com/v1/playlists/{id}", headers=headers)
+    playlist_data = res.json()
+
+    playlist_track_names = []
+
+    tracks_info = playlist_data["tracks"]
+
+    while True:
+        playlist_track_names.extend([
+            item["track"]["name"]
+            for item in tracks_info["items"]
+            if item.get("track") and item["track"].get("name")
+        ])
+
+        if not tracks_info.get("next"):
+            break
+
+        res = requests.get(tracks_info["next"], headers=headers)
+        tracks_info = res.json()
+
+    return render_template("playlist.html", tracks=playlist_track_names)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

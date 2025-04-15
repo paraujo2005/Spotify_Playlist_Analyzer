@@ -23,7 +23,7 @@ TOKEN_URL = "https://accounts.spotify.com/api/token"
 #App
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index_tailwind.html')
 
 #Página de logijn
 @app.route('/login')
@@ -79,17 +79,14 @@ def profile():
         "Authorization": f"Bearer {access_token}"
     }
 
-    user_profile_url = "https://api.spotify.com/v1/me"
-    res = requests.get(user_profile_url, headers=headers)
+    res = requests.get("https://api.spotify.com/v1/me", headers=headers)
 
-    if res.status_code != 200:
+    if res.status_code == 401:
+        return redirect("/login")
+    elif res.status_code != 200:
         return f"Erro ao obter perfil: {res.text}", res.status_code
 
     profile_data = res.json()
-    
-    display_name = profile_data.get("display_name")
-    email = profile_data.get("email")
-    user_id = profile_data.get("id")
 
     res = requests.get("https://api.spotify.com/v1/me/playlists", headers=headers)
 
@@ -98,14 +95,25 @@ def profile():
     
     playlist_data = res.json()
     playlist_items = playlist_data.get("items", [])
-    playlist_names = [p["name"] for p in playlist_items]
+        
+    playlists = []
+    for p in playlist_items:
+        playlists.append({
+            "id": p["id"],
+            "name": p["name"],
+            "image": p["images"][0]["url"] if p.get("images") and len(p["images"]) > 0 else "https://via.placeholder.com/150"
+        })
 
-    return render_template("profile.html",
+
+    return render_template("profile_tailwind.html",
                            display_name=profile_data.get("display_name"),
-                           email=profile_data.get("email"),
-                           user_id=profile_data.get("id"),
-                           playlist_names=playlist_names)
+                           display_image=(profile_data["images"][0]["url"]),
+                           playlists=playlists)
 
+
+@app.route('/playlist/<id>')
+def playlist(id):
+    return f"Testando e Funcionando para a playlist {id}"
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

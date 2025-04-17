@@ -10,7 +10,7 @@
   <h1>-------------------------------------------------------------------------------------------------------------------------------------</h1>
     <ol>
     {% for track in tracks %}
-        <li>{{ track.name }} -------- {{ track.artists }} ------ {{ track.popularity }} ------ {{ track.duration_ms }}ms ------ {{ track.duration_min_min }}m{{ track.duration_min_sec }}s</li>
+        <li>{{ track.name }} -------- {{ track.artists }} ------ {{ track.popularity }} ------ Acousticness:{{ track.acousticness }} -------------------- {{ track.duration_ms }}ms ------ {{ track.duration_min_min }}m{{ track.duration_min_sec }}s</li>
     {% endfor %}
     </ol>
 </body>

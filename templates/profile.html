@@ -29,7 +29,7 @@
     <!-- Grid de cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {% for playlist in playlists %}
-        <a href="/playlist/{{ playlist.id }}" data-playlist-name="{{ playlist.name }}" class="block transition-all duration-300 ease-in-out">
+        <a href="/loading/{{ playlist.id }}" data-playlist-name="{{ playlist.name }}" class="block transition-all duration-300 ease-in-out">
           <div class="bg-white rounded-xl shadow-lg p-4 flex flex-col items-center justify-between text-center hover:scale-105 hover:ring-4 hover:ring-green-500 transition h-64 w-full">
                 <img src="{{ playlist.image }}" alt="{{ playlist.name }}" class="w-32 h-32 rounded-lg object-cover mt-4 mb-4">
                 <h3 class="text-lg font-semibold text-gray-900 mb-6">{{ playlist.name }}</h3>

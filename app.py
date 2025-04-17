@@ -23,7 +23,7 @@ TOKEN_URL = "https://accounts.spotify.com/api/token"
 #App
 @app.route('/')
 def index():
-    return render_template('index_tailwind.html')
+    return render_template('index.html')
 
 #Página de logijn
 @app.route('/login')
@@ -111,11 +111,14 @@ def profile():
         res = requests.get(playlist_data["next"], headers=headers)
         playlist_data = res.json()
 
-    return render_template("profile_tailwind.html",
+    return render_template("profile.html",
                            display_name=profile_data.get("display_name"),
-                           display_image=(profile_data["images"][0]["url"]),
+                           display_image=(profile_data["images"][0]["url"] if profile_data.get("images") and len(profile_data["images"]) > 0 else "https://via.placeholder.com/150"),
                            playlists=playlists)
 
+@app.route('/loading/<id_playlist>')
+def loading(id_playlist):
+    return render_template("loading.html", id_playlist=id_playlist)
 
 @app.route('/playlist/<id_playlist>')
 def playlist(id_playlist):
@@ -246,7 +249,7 @@ def playlist(id_playlist):
         "playlist_duration_min_min": playlist_duration_min_min,
         "playlist_duration_min_sec": playlist_duration_min_sec
     }]
-
+    
     return render_template("playlist.html", tracks=playlist_tracks, playlist=playlist_analysis[0])
 
 if __name__ == '__main__':

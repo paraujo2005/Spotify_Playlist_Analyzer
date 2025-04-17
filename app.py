@@ -40,7 +40,7 @@ def login():
 
 #Retorno do Spotify
 @app.route('/callback')
-def callback():
+def spotify_callback():
     code = request.args.get("code")
 
     auth_str = f"{CLIENT_ID}:{CLIENT_SECRET}"
@@ -117,8 +117,8 @@ def profile():
                            playlists=playlists)
 
 
-@app.route('/playlist/<id>')
-def playlist(id):
+@app.route('/playlist/<id_playlist>')
+def playlist(id_playlist):
     access_token = session.get("access_token")
     
     if not access_token:
@@ -128,27 +128,126 @@ def playlist(id):
         "Authorization": f"Bearer {access_token}"
     }
 
-    res = requests.get(f"https://api.spotify.com/v1/playlists/{id}", headers=headers)
+    #Info do Get playlists
+    res = requests.get(f"https://api.spotify.com/v1/playlists/{id_playlist}", headers=headers)
     playlist_data = res.json()
+    playlist_tracks = []
+    playlist_tracks_info = playlist_data["tracks"]
 
-    playlist_track_names = []
+    artist_cache = {}
+    track_id_list = []
 
-    tracks_info = playlist_data["tracks"]
-
+    #Coleta dados de todas as tracks da playlist
     while True:
-        playlist_track_names.extend([
-            item["track"]["name"]
-            for item in tracks_info["items"]
-            if item.get("track") and item["track"].get("name")
-        ])
+        for item in playlist_tracks_info["items"]:
+            track = item.get("track")
 
-        if not tracks_info.get("next"):
+            if not track:
+                continue
+
+            #Info Track
+            track_id = track.get("id") #ID Track
+            track_name = track.get("name", "Desconhecida") #Nome Track
+            track_popularity = track.get("popularity", "-") #Popularidade Track
+            track_duration_ms = track.get("duration_ms", 0) #Duração Track MS
+            duration_sec = track_duration_ms // 1000 #Duração Track Segundos
+            duration_min_min = duration_sec // 60 #Duração Track Minutos (Min)
+            duration_min_sec = duration_sec % 60 #Duração Track Minutos (Sec)
+
+            #Artistas da Track
+            artists = []
+            for artist in track.get("artists", []):
+                artist_id = artist.get("id") #ID Artista
+                artist_name = artist.get("name", "Desconhecido") #Nome Artista
+
+                if artist_id in artist_cache:
+                    genres = artist_cache[artist_id] #Generos do Artista (Segundo Cache)
+
+                else:
+                    genres = []
+
+                    if artist_id:
+                        artist_res = requests.get(f"https://api.spotify.com/v1/artists/{artist_id}", headers=headers)
+
+                        if artist_res.status_code == 200:
+                            artist_info = artist_res.json()
+                            genres = artist_info.get("genres", []) #Generos do Artista
+
+                    artist_cache[artist_id] = genres #Salva Artista em Cache
+                
+                artists.append({"name": artist_name, "genres": genres}) #Salva Info Artista
+
+            #Adiciona o ID na lista para requisição futura de audio features
+            if track_id:
+                track_id_list.append(track_id)
+
+            #Lista final
+            playlist_tracks.append({
+                "id": track_id,
+                "name": track_name,
+                "artists": artists,
+                "popularity": track_popularity,
+                "duration_ms": track_duration_ms,
+                "duration_sec": duration_sec,
+                "duration_min_min": duration_min_min,
+                "duration_min_sec": duration_min_sec
+            })
+
+        if not playlist_tracks_info.get("next"):
             break
 
-        res = requests.get(tracks_info["next"], headers=headers)
-        tracks_info = res.json()
+        res = requests.get(playlist_tracks_info["next"], headers=headers)
+        playlist_tracks_info = res.json()
 
-    return render_template("playlist.html", tracks=playlist_track_names)
+    #Audio Features
+    features = {}
+    for i in range(0, len(track_id_list), 100):
+        batch = track_id_list[i:i+100]
+        res = requests.get(f"https://api.spotify.com/v1/audio-features?ids={','.join(batch)}", headers=headers)
+
+        if res.status_code == 200:
+            feautres_info = res.json()
+            for af in feautres_info.get("audio_features", []):
+                if af:
+                    features[af["id"]] = af
+
+    #Anexar audio features aos tracks
+    for track in playlist_tracks:
+        af = features.get(track["id"], {})
+        track.update({
+            "acousticness": af.get("acousticness"),
+            "danceability": af.get("danceability"),
+            "energy": af.get("energy"),
+            "instrumentalness": af.get("instrumentalness"),
+            "liveness": af.get("liveness"),
+            "loudness": af.get("loudness"),
+            "speechiness": af.get("speechiness"),
+            "bps": af.get("tempo"),
+            "valence": af.get("valence")
+        })
+
+
+    #Análise da Playlist
+
+    #Duração Média
+    durations = [t["duration_ms"] for t in playlist_tracks if isinstance(t["duration_ms"], int)]
+    if durations:
+        playlist_duration_ms = sum(durations)/len(durations)
+        playlist_duration_sec = playlist_duration_ms // 1000
+        playlist_duration_min_min = playlist_duration_sec // 60
+        playlist_duration_min_sec = playlist_duration_sec % 60
+    else:
+        playlist_duration_ms = playlist_duration_sec = playlist_duration_min_min = playlist_duration_min_sec = "-"
+    
+    #Lista Final Playlist
+    playlist_analysis = [{
+        "playlist_duration_ms": playlist_duration_ms,
+        "playlist_duration_sec": playlist_duration_sec,
+        "playlist_duration_min_min": playlist_duration_min_min,
+        "playlist_duration_min_sec": playlist_duration_min_sec
+    }]
+
+    return render_template("playlist.html", tracks=playlist_tracks, playlist=playlist_analysis[0])
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

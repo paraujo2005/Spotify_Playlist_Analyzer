@@ -5,9 +5,12 @@
   <title>Spotify Playlist Analyzer</title>
 </head>
 <body>
+  <hi>Media de Tempo: {{ playlist.playlist_duration_ms }}ms ----------------------------- {{ "%02d"|format(playlist.playlist_duration_min_min) }}m{{ "%02d"|format(playlist.playlist_duration_min_sec) }}s</hi>
+
+  <h1>-------------------------------------------------------------------------------------------------------------------------------------</h1>
     <ol>
     {% for track in tracks %}
-        <li>{{ track }}</li>
+        <li>{{ track.name }} -------- {{ track.artists }} ------ {{ track.popularity }} ------ {{ track.duration_ms }}ms ------ {{ track.duration_min_min }}m{{ track.duration_min_sec }}s</li>
     {% endfor %}
     </ol>
 </body>
